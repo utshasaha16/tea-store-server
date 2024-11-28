@@ -1,8 +1,8 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const express = require('express');
-require('dotenv').config()
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const express = require("express");
+require("dotenv").config();
 const app = express();
-const cors = require('cors');
+const cors = require("cors");
 const port = process.env.PORT || 5000;
 
 // middleWare
@@ -17,7 +17,7 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
@@ -27,16 +27,60 @@ async function run() {
 
     const teaCollection = client.db("teaDB").collection("tea");
 
-    app.post('/tea', async(req, res) => {
-        const newTea = req.body;
-        console.log(newTea);
-        const result = await teaCollection.insertOne(newTea);
-        res.send(result)
-    })
+    app.get("/tea", async (req, res) => {
+      const cursor = teaCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/tea/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await teaCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/tea", async (req, res) => {
+      const newTea = req.body;
+      console.log(newTea);
+      const result = await teaCollection.insertOne(newTea);
+      res.send(result);
+    });
+
+    app.put("/tea/:id", async(req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedTea = req.body;
+      const tea = {
+        $set: {
+          name: updatedTea.name,
+          quantity: updatedTea.quantity,
+          supplier: updatedTea.supplier,
+          taste: updatedTea.taste,
+          category: updatedTea.category,
+          details: updatedTea.details,
+          photoUrl: updatedTea.photoUrl,
+        },
+      };
+
+      const result = await teaCollection.updateOne(filter, tea, options);
+      res.send(result)
+
+    });
+
+    app.delete("/tea/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await teaCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -44,11 +88,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-
-app.get('/', (req, res) => {
-    res.send('tea making server is running')
-})
+app.get("/", (req, res) => {
+  res.send("tea making server is running");
+});
 
 app.listen(port, () => {
-    console.log(`tea server is running on PORT: ${port}`);
-})
+  console.log(`tea server is running on PORT: ${port}`);
+});
